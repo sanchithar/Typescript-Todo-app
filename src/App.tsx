@@ -52,9 +52,10 @@ const App: React.FC = () => {
     
     if (savedNotes) {
       const parsedNotes = JSON.parse(savedNotes);
-      setNotes(parsedNotes.map((note: Note) => ({
+      setNotes(parsedNotes.map((note: any) => ({
         ...note,
-        createdAt: new Date(note.createdAt)
+        createdAt: new Date(note.createdAt),
+        completed: note.completed ?? false // Default to false if not present
       })));
     }
     
