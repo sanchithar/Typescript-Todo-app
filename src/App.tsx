@@ -18,6 +18,7 @@ interface Note {
   category?: string;
   createdAt: Date;
   archived: boolean;
+  completed: boolean;
 }
 
 interface FilterOptions {
@@ -131,6 +132,12 @@ const App: React.FC = () => {
     ));
   };
 
+  const toggleComplete = (id: string) => {
+    setNotes(notes.map(note => 
+      note.id === id ? { ...note, completed: !note.completed } : note
+    ));
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -160,6 +167,7 @@ const App: React.FC = () => {
                 note={note}
                 onDelete={deleteNote}
                 onArchive={toggleArchive}
+                onToggleComplete={toggleComplete}
               />
             ))
           )}
@@ -264,7 +272,8 @@ const NoteCard: React.FC<{
   note: Note;
   onDelete: (id: string) => void;
   onArchive: (id: string) => void;
-}> = ({ note, onDelete, onArchive }) => {
+  onToggleComplete: (id: string) => void;
+}> = ({ note, onDelete, onArchive, onToggleComplete }) => {
   const getIcon = () => {
     switch (note.type) {
       case 'text': return <FileText size={20} />;
@@ -274,9 +283,18 @@ const NoteCard: React.FC<{
   };
 
   return (
-    <div className={`note-card ${note.archived ? 'archived' : ''}`}>
+    <div className={`note-card ${note.archived ? 'archived' : ''} ${note.completed ? 'completed' : ''}`}>
       <div className="note-header">
-        <div className="note-type">{getIcon()}</div>
+        <div className="note-type-wrapper">
+          <input
+            type="checkbox"
+            checked={note.completed}
+            onChange={() => onToggleComplete(note.id)}
+            className="note-checkbox"
+            title={note.completed ? 'Mark as incomplete' : 'Mark as complete'}
+          />
+          <div className="note-type">{getIcon()}</div>
+        </div>
         <div className="note-actions">
           <button 
             className="icon-btn"
@@ -348,7 +366,8 @@ const NoteModal: React.FC<{
       content: content.trim(),
       category: newCategory.trim() || category || undefined,
       createdAt: new Date(),
-      archived: false
+      archived: false,
+      completed: false
     };
 
     if (noteType === 'image' && imageUrl.trim()) {

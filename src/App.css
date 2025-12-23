@@ -170,11 +170,38 @@ body {
   background: #f9f9f9;
 }
 
+.note-card.completed {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.note-card.completed .note-title {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.note-card.completed .note-content {
+  color: #94a3b8;
+}
+
 .note-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+}
+
+.note-type-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.note-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #667eea;
 }
 
 .note-type {
