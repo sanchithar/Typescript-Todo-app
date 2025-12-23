@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [filters, setFilters] = useState<FilterOptions>({
     searchTerm: '',
     startDate: '',
@@ -59,16 +60,22 @@ const App: React.FC = () => {
     if (savedCategories) {
       setCategories(JSON.parse(savedCategories));
     }
+    
+    setIsInitialLoad(false);
   }, []);
 
-  // Save to localStorage whenever notes or categories change
+  // Save to localStorage whenever notes or categories change (after initial load)
   useEffect(() => {
-    localStorage.setItem('notes', JSON.stringify(notes));
-  }, [notes]);
+    if (!isInitialLoad) {
+      localStorage.setItem('notes', JSON.stringify(notes));
+    }
+  }, [notes, isInitialLoad]);
 
   useEffect(() => {
-    localStorage.setItem('categories', JSON.stringify(categories));
-  }, [categories]);
+    if (!isInitialLoad) {
+      localStorage.setItem('categories', JSON.stringify(categories));
+    }
+  }, [categories, isInitialLoad]);
 
   const filteredAndSortedNotes = useMemo(() => {
     let filtered = notes.filter(note => {
