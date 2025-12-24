@@ -1,37 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Calendar, Plus, X, Archive, Trash2, Image, MapPin, FileText, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-
-// Types
-type NoteType = 'text' | 'image' | 'location';
-
-interface Note {
-  id: string;
-  type: NoteType;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  location?: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
-  category?: string;
-  createdAt: Date;
-  archived: boolean;
-  completed: boolean;
-}
-
-interface FilterOptions {
-  searchTerm: string;
-  startDate: string;
-  endDate: string;
-  category: string;
-  showArchived: boolean;
-}
+import { useState, useEffect, useMemo } from 'react';
+import { Plus } from 'lucide-react';
+import type { FilterOptions }  from './types/FilterOptions';
+import type { Note } from './types/Note';
+import { FilterPanel } from './components/FilterPanel';
+import { NoteModal } from './components/NoteModal';
+import { Pagination } from './components/Pagination';
+import { NoteCard } from './components/NoteCard';
 
 const ITEMS_PER_PAGE = 6;
 
-const App: React.FC = () => {
+export function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -81,6 +59,9 @@ const App: React.FC = () => {
 
   const filteredAndSortedNotes = useMemo(() => {
     let filtered = notes.filter(note => {
+      // Exclude completed notes from main list
+      if (note.completed) return false;
+      
       if (!filters.showArchived && note.archived) return false;
       if (filters.showArchived && !note.archived) return false;
       
@@ -107,7 +88,39 @@ const App: React.FC = () => {
       
       return true;
     });
+    //sorting- newest to oldest
+    return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [notes, filters]);
 
+  const completedNotes = useMemo(() => {
+    let filtered = notes.filter(note => {
+      // Only show completed notes
+      if (!note.completed) return false;
+      if (note.archived) return false; // Don't show archived in completed
+      
+      if (filters.searchTerm) {
+        const search = filters.searchTerm.toLowerCase();
+        if (!note.title.toLowerCase().includes(search) && 
+            !note.content.toLowerCase().includes(search)) {
+          return false;
+        }
+      }
+      
+      if (filters.category && note.category !== filters.category) return false;
+      
+      if (filters.startDate) {
+        const start = new Date(filters.startDate);
+        if (note.createdAt < start) return false;
+      }
+      
+      if (filters.endDate) {
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        if (note.createdAt > end) return false;
+      }
+      
+      return true;
+    });
     return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }, [notes, filters]);
 
@@ -181,6 +194,24 @@ const App: React.FC = () => {
             onPageChange={setCurrentPage}
           />
         )}
+
+        {/* Completed Notes Section */}
+        {completedNotes.length > 0 && (
+          <div className="completed-section">
+            <h2 className="completed-header">✅ Completed ({completedNotes.length})</h2>
+            <div className="notes-grid">
+              {completedNotes.map(note => (
+                <NoteCard 
+                  key={note.id} 
+                  note={note}
+                  onDelete={deleteNote}
+                  onArchive={toggleArchive}
+                  onToggleComplete={toggleComplete}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (
@@ -200,342 +231,342 @@ const App: React.FC = () => {
   );
 };
 
-const FilterPanel: React.FC<{
-  filters: FilterOptions;
-  setFilters: (filters: FilterOptions) => void;
-  categories: string[];
-  setCurrentPage: (page: number) => void;
-}> = ({ filters, setFilters, categories, setCurrentPage }) => {
-  const updateFilter = (key: keyof FilterOptions, value: string | boolean) => {
-    setFilters({ ...filters, [key]: value });
-    setCurrentPage(1);
-  };
+// const FilterPanel: React.FC<{
+//   filters: FilterOptions;
+//   setFilters: (filters: FilterOptions) => void;
+//   categories: string[];
+//   setCurrentPage: (page: number) => void;
+// }> = ({ filters, setFilters, categories, setCurrentPage }) => {
+//   const updateFilter = (key: keyof FilterOptions, value: string | boolean) => {
+//     setFilters({ ...filters, [key]: value });
+//     setCurrentPage(1);
+//   };
 
-  return (
-    <div className="filter-panel">
-      <div className="filter-group">
-        <Search size={18} />
-        <input
-          type="text"
-          placeholder="Search notes..."
-          value={filters.searchTerm}
-          onChange={(e) => updateFilter('searchTerm', e.target.value)}
-          className="filter-input"
-        />
-      </div>
+//   return (
+//     <div className="filter-panel">
+//       <div className="filter-group">
+//         <Search size={18} />
+//         <input
+//           type="text"
+//           placeholder="Search notes..."
+//           value={filters.searchTerm}
+//           onChange={(e) => updateFilter('searchTerm', e.target.value)}
+//           className="filter-input"
+//         />
+//       </div>
 
-      <div className="filter-row">
-        <div className="filter-group">
-          <Calendar size={18} />
-          <input
-            type="date"
-            value={filters.startDate}
-            onChange={(e) => updateFilter('startDate', e.target.value)}
-            className="filter-input"
-          />
-          <span>to</span>
-          <input
-            type="date"
-            value={filters.endDate}
-            onChange={(e) => updateFilter('endDate', e.target.value)}
-            className="filter-input"
-          />
-        </div>
+//       <div className="filter-row">
+//         <div className="filter-group">
+//           <Calendar size={18} />
+//           <input
+//             type="date"
+//             value={filters.startDate}
+//             onChange={(e) => updateFilter('startDate', e.target.value)}
+//             className="filter-input"
+//           />
+//           <span>to</span>
+//           <input
+//             type="date"
+//             value={filters.endDate}
+//             onChange={(e) => updateFilter('endDate', e.target.value)}
+//             className="filter-input"
+//           />
+//         </div>
 
-        <div className="filter-group">
-          <Filter size={18} />
-          <select
-            value={filters.category}
-            onChange={(e) => updateFilter('category', e.target.value)}
-            className="filter-input"
-          >
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
+//         <div className="filter-group">
+//           <Filter size={18} />
+//           <select
+//             value={filters.category}
+//             onChange={(e) => updateFilter('category', e.target.value)}
+//             className="filter-input"
+//           >
+//             <option value="">All Categories</option>
+//             {categories.map(cat => (
+//               <option key={cat} value={cat}>{cat}</option>
+//             ))}
+//           </select>
+//         </div>
 
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={filters.showArchived}
-            onChange={(e) => updateFilter('showArchived', e.target.checked)}
-          />
-          Show Archived
-        </label>
-      </div>
-    </div>
-  );
-};
+//         <label className="checkbox-label">
+//           <input
+//             type="checkbox"
+//             checked={filters.showArchived}
+//             onChange={(e) => updateFilter('showArchived', e.target.checked)}
+//           />
+//           Show Archived
+//         </label>
+//       </div>
+//     </div>
+//   );
+// };
 
-const NoteCard: React.FC<{
-  note: Note;
-  onDelete: (id: string) => void;
-  onArchive: (id: string) => void;
-  onToggleComplete: (id: string) => void;
-}> = ({ note, onDelete, onArchive, onToggleComplete }) => {
-  const getIcon = () => {
-    switch (note.type) {
-      case 'text': return <FileText size={20} />;
-      case 'image': return <Image size={20} />;
-      case 'location': return <MapPin size={20} />;
-    }
-  };
+// const NoteCard: React.FC<{
+//   note: Note;
+//   onDelete: (id: string) => void;
+//   onArchive: (id: string) => void;
+//   onToggleComplete: (id: string) => void;
+// }> = ({ note, onDelete, onArchive, onToggleComplete }) => {
+//   const getIcon = () => {
+//     switch (note.type) {
+//       case 'text': return <FileText size={20} />;
+//       case 'image': return <Image size={20} />;
+//       case 'location': return <MapPin size={20} />;
+//     }
+//   };
 
-  return (
-    <div className={`note-card ${note.archived ? 'archived' : ''} ${note.completed ? 'completed' : ''}`}>
-      <div className="note-header">
-        <div className="note-type-wrapper">
-          <input
-            type="checkbox"
-            checked={note.completed}
-            onChange={() => onToggleComplete(note.id)}
-            className="note-checkbox"
-            title={note.completed ? 'Mark as incomplete' : 'Mark as complete'}
-          />
-          <div className="note-type">{getIcon()}</div>
-        </div>
-        <div className="note-actions">
-          <button 
-            className="icon-btn"
-            onClick={() => onArchive(note.id)}
-            title={note.archived ? 'Unarchive' : 'Archive'}
-          >
-            <Archive size={18} />
-          </button>
-          <button 
-            className="icon-btn"
-            onClick={() => onDelete(note.id)}
-            title="Delete"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
-      </div>
+//   return (
+//     <div className={`note-card ${note.archived ? 'archived' : ''} ${note.completed ? 'completed' : ''}`}>
+//       <div className="note-header">
+//         <div className="note-type-wrapper">
+//           <input
+//             type="checkbox"
+//             checked={note.completed}
+//             onChange={() => onToggleComplete(note.id)}
+//             className="note-checkbox"
+//             title={note.completed ? 'Mark as incomplete' : 'Mark as complete'}
+//           />
+//           <div className="note-type">{getIcon()}</div>
+//         </div>
+//         <div className="note-actions">
+//           <button 
+//             className="icon-btn"
+//             onClick={() => onArchive(note.id)}
+//             title={note.archived ? 'Unarchive' : 'Archive'}
+//           >
+//             <Archive size={18} />
+//           </button>
+//           <button 
+//             className="icon-btn"
+//             onClick={() => onDelete(note.id)}
+//             title="Delete"
+//           >
+//             <Trash2 size={18} />
+//           </button>
+//         </div>
+//       </div>
 
-      <h3 className="note-title">{note.title}</h3>
+//       <h3 className="note-title">{note.title}</h3>
       
-      {note.type === 'image' && note.imageUrl && (
-        <img src={note.imageUrl} alt={note.title} className="note-image" />
-      )}
+//       {note.type === 'image' && note.imageUrl && (
+//         <img src={note.imageUrl} alt={note.title} className="note-image" />
+//       )}
       
-      {note.type === 'location' && note.location && (
-        <div className="note-location">
-          <MapPin size={16} />
-          <span>{note.location.address}</span>
-        </div>
-      )}
+//       {note.type === 'location' && note.location && (
+//         <div className="note-location">
+//           <MapPin size={16} />
+//           <span>{note.location.address}</span>
+//         </div>
+//       )}
       
-      <p className="note-content">{note.content}</p>
+//       <p className="note-content">{note.content}</p>
       
-      <div className="note-footer">
-        {note.category && (
-          <span className="note-category">{note.category}</span>
-        )}
-        <span className="note-date">
-          {note.createdAt.toLocaleDateString()}
-        </span>
-      </div>
-    </div>
-  );
-};
+//       <div className="note-footer">
+//         {note.category && (
+//           <span className="note-category">{note.category}</span>
+//         )}
+//         <span className="note-date">
+//           {note.createdAt.toLocaleDateString()}
+//         </span>
+//       </div>
+//     </div>
+//   );
+// };
 
-const NoteModal: React.FC<{
-  onClose: () => void;
-  onSave: (note: Note) => void;
-  categories: string[];
-}> = ({ onClose, onSave, categories }) => {
-  const [noteType, setNoteType] = useState<NoteType>('text');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [location, setLocation] = useState({ address: '', lat: 0, lng: 0 });
-  const [category, setCategory] = useState('');
-  const [newCategory, setNewCategory] = useState('');
+// const NoteModal: React.FC<{
+//   onClose: () => void;
+//   onSave: (note: Note) => void;
+//   categories: string[];
+// }> = ({ onClose, onSave, categories }) => {
+//   const [noteType, setNoteType] = useState<NoteType>('text');
+//   const [title, setTitle] = useState('');
+//   const [content, setContent] = useState('');
+//   const [imageUrl, setImageUrl] = useState('');
+//   const [location, setLocation] = useState({ address: '', lat: 0, lng: 0 });
+//   const [category, setCategory] = useState('');
+//   const [newCategory, setNewCategory] = useState('');
 
-  const handleSave = () => {
-    if (!title.trim()) {
-      alert('Please enter a title');
-      return;
-    }
+//   const handleSave = () => {
+//     if (!title.trim()) {
+//       alert('Please enter a title');
+//       return;
+//     }
 
-    const note: Note = {
-      id: Date.now().toString(),
-      type: noteType,
-      title: title.trim(),
-      content: content.trim(),
-      category: newCategory.trim() || category || undefined,
-      createdAt: new Date(),
-      archived: false,
-      completed: false
-    };
+//     const note: Note = {
+//       id: Date.now().toString(),
+//       type: noteType,
+//       title: title.trim(),
+//       content: content.trim(),
+//       category: newCategory.trim() || category || undefined,
+//       createdAt: new Date(),
+//       archived: false,
+//       completed: false
+//     };
 
-    if (noteType === 'image' && imageUrl.trim()) {
-      note.imageUrl = imageUrl.trim();
-    }
+//     if (noteType === 'image' && imageUrl.trim()) {
+//       note.imageUrl = imageUrl.trim();
+//     }
 
-    if (noteType === 'location' && location.address.trim()) {
-      note.location = {
-        address: location.address.trim(),
-        lat: location.lat,
-        lng: location.lng
-      };
-    }
+//     if (noteType === 'location' && location.address.trim()) {
+//       note.location = {
+//         address: location.address.trim(),
+//         lat: location.lat,
+//         lng: location.lng
+//       };
+//     }
 
-    onSave(note);
-  };
+//     onSave(note);
+//   };
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Create New Note</h2>
-          <button className="icon-btn" onClick={onClose}>
-            <X size={24} />
-          </button>
-        </div>
+//   return (
+//     <div className="modal-overlay" onClick={onClose}>
+//       <div className="modal" onClick={(e) => e.stopPropagation()}>
+//         <div className="modal-header">
+//           <h2>Create New Note</h2>
+//           <button className="icon-btn" onClick={onClose}>
+//             <X size={24} />
+//           </button>
+//         </div>
 
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Note Type</label>
-            <div className="type-selector">
-              <button
-                className={`type-btn ${noteType === 'text' ? 'active' : ''}`}
-                onClick={() => setNoteType('text')}
-              >
-                <FileText size={20} /> Text
-              </button>
-              <button
-                className={`type-btn ${noteType === 'image' ? 'active' : ''}`}
-                onClick={() => setNoteType('image')}
-              >
-                <Image size={20} /> Image
-              </button>
-              <button
-                className={`type-btn ${noteType === 'location' ? 'active' : ''}`}
-                onClick={() => setNoteType('location')}
-              >
-                <MapPin size={20} /> Location
-              </button>
-            </div>
-          </div>
+//         <div className="modal-body">
+//           <div className="form-group">
+//             <label>Note Type</label>
+//             <div className="type-selector">
+//               <button
+//                 className={`type-btn ${noteType === 'text' ? 'active' : ''}`}
+//                 onClick={() => setNoteType('text')}
+//               >
+//                 <FileText size={20} /> Text
+//               </button>
+//               <button
+//                 className={`type-btn ${noteType === 'image' ? 'active' : ''}`}
+//                 onClick={() => setNoteType('image')}
+//               >
+//                 <Image size={20} /> Image
+//               </button>
+//               <button
+//                 className={`type-btn ${noteType === 'location' ? 'active' : ''}`}
+//                 onClick={() => setNoteType('location')}
+//               >
+//                 <MapPin size={20} /> Location
+//               </button>
+//             </div>
+//           </div>
 
-          <div className="form-group">
-            <label>Title *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter note title"
-              className="form-input"
-            />
-          </div>
+//           <div className="form-group">
+//             <label>Title *</label>
+//             <input
+//               type="text"
+//               value={title}
+//               onChange={(e) => setTitle(e.target.value)}
+//               placeholder="Enter note title"
+//               className="form-input"
+//             />
+//           </div>
 
-          {noteType === 'image' && (
-            <div className="form-group">
-              <label>Image URL</label>
-              <input
-                type="text"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Enter image URL"
-                className="form-input"
-              />
-            </div>
-          )}
+//           {noteType === 'image' && (
+//             <div className="form-group">
+//               <label>Image URL</label>
+//               <input
+//                 type="text"
+//                 value={imageUrl}
+//                 onChange={(e) => setImageUrl(e.target.value)}
+//                 placeholder="Enter image URL"
+//                 className="form-input"
+//               />
+//             </div>
+//           )}
 
-          {noteType === 'location' && (
-            <div className="form-group">
-              <label>Location Address</label>
-              <input
-                type="text"
-                value={location.address}
-                onChange={(e) => setLocation({ ...location, address: e.target.value })}
-                placeholder="Enter location address"
-                className="form-input"
-              />
-            </div>
-          )}
+//           {noteType === 'location' && (
+//             <div className="form-group">
+//               <label>Location Address</label>
+//               <input
+//                 type="text"
+//                 value={location.address}
+//                 onChange={(e) => setLocation({ ...location, address: e.target.value })}
+//                 placeholder="Enter location address"
+//                 className="form-input"
+//               />
+//             </div>
+//           )}
 
-          <div className="form-group">
-            <label>Content</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Enter note content"
-              className="form-textarea"
-              rows={4}
-            />
-          </div>
+//           <div className="form-group">
+//             <label>Content</label>
+//             <textarea
+//               value={content}
+//               onChange={(e) => setContent(e.target.value)}
+//               placeholder="Enter note content"
+//               className="form-textarea"
+//               rows={4}
+//             />
+//           </div>
 
-          <div className="form-group">
-            <label>Category (Optional)</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="form-input"
-            >
-              <option value="">Select existing category</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+//           <div className="form-group">
+//             <label>Category (Optional)</label>
+//             <select
+//               value={category}
+//               onChange={(e) => setCategory(e.target.value)}
+//               className="form-input"
+//             >
+//               <option value="">Select existing category</option>
+//               {categories.map(cat => (
+//                 <option key={cat} value={cat}>{cat}</option>
+//               ))}
+//             </select>
+//           </div>
 
-          <div className="form-group">
-            <label>Or Create New Category</label>
-            <input
-              type="text"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              placeholder="Enter new category name"
-              className="form-input"
-            />
-          </div>
-        </div>
+//           <div className="form-group">
+//             <label>Or Create New Category</label>
+//             <input
+//               type="text"
+//               value={newCategory}
+//               onChange={(e) => setNewCategory(e.target.value)}
+//               placeholder="Enter new category name"
+//               className="form-input"
+//             />
+//           </div>
+//         </div>
 
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn-primary" onClick={handleSave}>
-            Save Note
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+//         <div className="modal-footer">
+//           <button className="btn-secondary" onClick={onClose}>
+//             Cancel
+//           </button>
+//           <button className="btn-primary" onClick={handleSave}>
+//             Save Note
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
-const Pagination: React.FC<{
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}> = ({ currentPage, totalPages, onPageChange }) => {
-  return (
-    <div className="pagination">
-      <button
-        className="pagination-btn"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-      >
-        <ChevronLeft size={20} />
-      </button>
+// const Pagination: React.FC<{
+//   currentPage: number;
+//   totalPages: number;
+//   onPageChange: (page: number) => void;
+// }> = ({ currentPage, totalPages, onPageChange }) => {
+//   return (
+//     <div className="pagination">
+//       <button
+//         className="pagination-btn"
+//         onClick={() => onPageChange(currentPage - 1)}
+//         disabled={currentPage === 1}
+//       >
+//         <ChevronLeft size={20} />
+//       </button>
       
-      <span className="pagination-info">
-        Page {currentPage} of {totalPages}
-      </span>
+//       <span className="pagination-info">
+//         Page {currentPage} of {totalPages}
+//       </span>
       
-      <button
-        className="pagination-btn"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-      >
-        <ChevronRight size={20} />
-      </button>
-    </div>
-  );
-};
+//       <button
+//         className="pagination-btn"
+//         onClick={() => onPageChange(currentPage + 1)}
+//         disabled={currentPage === totalPages}
+//       >
+//         <ChevronRight size={20} />
+//       </button>
+//     </div>
+//   );
+// };
 
 export default App;

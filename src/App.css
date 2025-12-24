@@ -443,6 +443,22 @@ body {
   font-weight: 600;
 }
 
+/* Completed Section */
+.completed-section {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 2px solid #e0e0e0;
+}
+
+.completed-header {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 768px) {
   .header {
     flex-direction: column;
