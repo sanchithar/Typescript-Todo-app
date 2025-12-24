@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { NoteCard } from '../components/NoteCard';
-import type { Note } from '../types/Note';
+
 
 const meta = {
   title: 'Components/NoteCard',
